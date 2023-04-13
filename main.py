@@ -128,6 +128,7 @@ def show_bmk_windows(q: Queue) -> None:
                     current_buks_list.append(current_bmk)
                     redraw_bmk_window(params_dict)
                 redraw_window_table(params_dict)
+                refresh_pr(params_dict)
                 manage_error_in_get_status(current_bmk, params_dict)
                 dpg.set_item_user_data(f"bmk_{current_bmk}", params_dict)
             else:
@@ -189,18 +190,9 @@ def redraw_window_table(params: dict[str, dict[str, dict[str, str]]]) -> None:
     data_for_table = params['data']['getStatus\r\n']
     if not data_for_table:
         return
-    
-    if dpg.does_item_exist(f'set_pr_st{bmk}'):
-        for cnt, st in enumerate(stup):
-            cnt += 7 # номера ступеней в посылке дата_фор_тэйбл
-            # if dpg.get_value(f'new_pr_{st}{bmk}') == int(data_for_table[list(data_for_table)[cnt]]):
-            #     break
-            dpg.set_value(f'new_pr_{st}{bmk}', int(data_for_table[list(data_for_table)[cnt]]))
     if dpg.does_item_exist(f'set_temp_c_v_{bmk}'):
         dpg.set_value(f'set_temp_c_v_{bmk}', data_for_table[list(data_for_table)[16]][0] + str(int(data_for_table[list(data_for_table)[16]][1:])))
         print(dpg.get_value(f'set_temp_c_v_{bmk}'))
-    
-    
     if dpg.does_item_exist(f"MT_{bmk}"):
         for i in range(len(list(data_for_table)) - 1):
             if i == 14 or i == 5:
@@ -280,8 +272,6 @@ def main_window(q: Queue, q_task: Queue) -> None:
                     with dpg.menu(label=f'Настроить {list_of_bmk[bmk]}'):
                         dpg.add_button(label="Установить темепературу включения подогрева", callback=set_temp, user_data=[bmk, q_task])
                         dpg.add_button(label="Установить давление по ступеням", callback=set_pr_st, user_data=[bmk, q_task])
-                        dpg.add_button(label="Установить колибровачные значения дла датчиков давления")
-            dpg.add_menu_item(label="Помощь")
             with dpg.menu(label="О программе"):
                 dpg.add_text(default_value="""Разработано в ЦКЖТ в 2023 году
 Разработчик Волков Егор Алексеевич 
@@ -296,6 +286,7 @@ def main_window(q: Queue, q_task: Queue) -> None:
         for bmk in list_of_bmk.keys():
             dpg.add_bool_value(tag=f"line_err{bmk}", default_value=False)
             dpg.add_bool_value(tag=f"line_cnt{bmk}", default_value=True)
+            dpg.add_bool_value(tag=f'pr_is_ref{bmk}', default_value= False)
         dpg.add_int_value(tag=f"cnt", default_value=- 120)
     with dpg.theme(tag="ser1_theme"):
         with dpg.theme_component(dpg.mvLineSeries):
@@ -320,7 +311,7 @@ def main_window(q: Queue, q_task: Queue) -> None:
     dpg.setup_dearpygui()
     dpg.show_viewport()
     while dpg.is_dearpygui_running():
-        if q.qsize() > 1000:  # ЕСЛИ СЛИШКОМ ДОЛГО ОКНО БЫЛО СВЕРНУТО, ТО ВОТ ТЕБЕ ПРОПУСК В ГРАФИКЕ
+        if q.qsize() > 10000:  # ЕСЛИ СЛИШКОМ ДОЛГО ОКНО БЫЛО СВЕРНУТО, ТО ВОТ ТЕБЕ ПРОПУСК В ГРАФИКЕ
             while not q.empty():
                 q.get()
         print_real_time()

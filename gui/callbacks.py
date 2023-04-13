@@ -72,7 +72,6 @@ def draw_window_table(sender: int, add_data: str, user_data: dict[str, dict[str,
 list_for_plot_x: list[float] = []
 list_for_plot_y1: list[float] = []
 list_for_plot_y2: list[float] = []
-
 current_buks_list: list[str] = []
 
 
@@ -85,7 +84,6 @@ def close_plot(sender: int, app_data: str, q_task: Queue) -> None:
 
 
 def create_plot(sender: str, app_data: list[str], q_task: Queue) -> None:
-
     commands_list: list[bytes] = []
     for bmk in list_of_bmk.keys():
         for command in list_of_control_com[:1]:
@@ -126,39 +124,51 @@ def cancel(s:int, a_p:str, u_d:str) -> None:
     dpg.delete_item(u_d)
     if dpg.does_item_exist('res_s'):
         dpg.delete_item('res_s')
+    for bmk in list_of_bmk:
+        dpg.set_value(f'pr_is_ref{bmk}', False)
 
-def send_temp_set(s:int, a_p:str, u_d) -> None:
+
+def send_pr(s:str, a_p:str, u_d) -> None:
     i:int = 0
-    temp:int = dpg.get_value('new_temp')
-    temp_com:bytes = f'bmk:{u_d[0]}:setTempHeart={temp}'.encode()
+    st = s.split('_')[0]
+    new_pr = dpg.get_value(f'new_pr_{st}{u_d[0]}')
+    pr_com = f"bmk:{u_d[0]}:setP{st}={new_pr}".encode()
     commands_list: list[bytes] = []
     for bmk in list_of_bmk.keys():
         for command in list_of_control_com[:1]:
             commands_list.append(ser.commands_generator(bmk, command).encode())
-    commands_list.insert(0, temp_com)
+    commands_list.insert(0, pr_com)
     u_d[1].put(commands_list)
     time.sleep(1)
     commands_list.pop(0)
     u_d[1].put(commands_list)
-    dpg.set_item_callback('canc', empty_callback)
-    dpg.set_item_callback('set', empty_callback)
-    while int(dpg.get_value(f'set_temp_c_v_{u_d[0]}').replace('+', '')) != dpg.get_value('new_temp'):
-        dpg.set_value('p_b_temp', i / 120000)
+    dpg.set_value(f'pr_is_ref{u_d[0]}', False)
+    while i < 10000000:
         i += 1
-        if i > 1000000:
-            with dpg.window(label='Результат настройки', tag = 'res_s', autosize= False, pos= dpg.get_item_pos('set_temp_w'), width= 500):
-                dpg.add_text(default_value='Неудачная попатка насйтроки, попробуйте ещё!')
-                dpg.add_button(label='Ок', callback=cancel, user_data='set_temp_w')
-            return
-    with dpg.window(label='Результат настройки', tag = 'res_s', autosize= False, pos= dpg.get_item_pos('set_temp_w'), width= 300):
-        dpg.add_text(default_value='Успех!')
-        dpg.add_button(label='Ок', callback=cancel, user_data='set_temp_w')
-    dpg.set_value('p_b_temp', 1)
-    return
-    
-    
-    
-    
+        dpg.set_value('p_b_pr', i / 13000000)
+    if dpg.get_value(f'new_pr_{st}{u_d[0]}') != new_pr:
+        with dpg.window(label='Результат настройки', tag = 'res_s', autosize= False, pos= (dpg.get_item_pos(f"set_pr_st{u_d[0]}")[0] + 40, dpg.get_item_pos(f"set_pr_st{u_d[0]}")[0] + 40), width= 500):
+            dpg.add_text(default_value='Неудачная попытка насйтроки, попробуйте ещё!')
+            dpg.add_button(label='Ок', callback=cancel, user_data=f"res_s")
+            dpg.set_value('p_b_pr', 0)
+    else: 
+        with dpg.window(label='Результат настройки', tag = 'res_s', autosize= False, pos= (dpg.get_item_pos(f"set_pr_st{u_d[0]}")[0] + 40, dpg.get_item_pos(f"set_pr_st{u_d[0]}")[0] + 40), width= 300):
+            dpg.add_text(default_value='Успех!')
+            dpg.add_button(label='Ок', callback=cancel, user_data=f"res_s")
+            dpg.set_value('p_b_pr', 1)
+        
+
+def refresh_pr(params: dict[str, dict[str, dict[str, str]]]) -> None:
+    bmk: str = str(params['bmk'])
+    data_for_table = params['data']['getStatus\r\n']
+    if dpg.does_item_exist(f'set_pr_st{bmk}') and not dpg.get_value(f'pr_is_ref{bmk}'):
+        for cnt, st in enumerate(stup):
+            cnt += 7 # номера ступеней в посылке дата_фор_тэйбл
+            # if dpg.get_value(f'new_pr_{st}{bmk}') == int(data_for_table[list(data_for_table)[cnt]]):
+            #     break
+            dpg.set_value(f'new_pr_{st}{bmk}', int(data_for_table[list(data_for_table)[cnt]]))
+        dpg.set_value(f'pr_is_ref{bmk}', True)
+
 def set_pr_st(s:int, a_d:str, user_data) -> None:
     global list_for_plot_y2, list_for_plot_x, list_for_plot_y1
     commands_list: list[bytes] = []
@@ -176,29 +186,71 @@ def set_pr_st(s:int, a_d:str, user_data) -> None:
             return
         else:
             dpg.delete_item("set_pt_st")
-    with dpg.window(label=f"Настройка далвения по ступеням {list_of_bmk[user_data[0]]}", tag=f"set_pr_st{user_data[0]}", pos=(500, 400), no_resize=False, width=500, height=150, on_close=cancel, user_data= f"set_pr_st{user_data[0]}"):
+    with dpg.window(label=f"Настройка далвения по ступеням {list_of_bmk[user_data[0]]}", tag=f"set_pr_st{user_data[0]}", pos=(500, 400), no_resize=False, autosize=True, on_close=cancel, user_data= f"set_pr_st{user_data[0]}"):
         with dpg.group(horizontal= True):
-            dpg.add_text(default_value= 'Текущее значение давления ступени 0,5:')
+            dpg.add_text(default_value= 'Значение давления ступени 0,5:')
             dpg.add_input_int(default_value=5, width=200, tag=f'new_pr_05{user_data[0]}', max_value=125, min_value=15, max_clamped=True, min_clamped=True)
+            dpg.add_button(label= 'Настроить', callback= send_pr, tag = f'05_{user_data[0]}', user_data= user_data)
         with dpg.group(horizontal= True):
-            dpg.add_text(default_value= 'Текущее значение давления ступени 1,0:')
+            dpg.add_text(default_value= 'Значение давления ступени 1,0:')
             dpg.add_input_int(default_value=5, width=200, tag=f'new_pr_10{user_data[0]}', max_value=170, min_value=76, max_clamped=True, min_clamped=True)
+            dpg.add_button(label= 'Настроить', callback= send_pr, tag = f'10_{user_data[0]}', user_data= user_data)
         with dpg.group(horizontal= True):
-            dpg.add_text(default_value= 'Текущее значение давления ступени 1,5:')
+            dpg.add_text(default_value= 'Значение давления ступени 1,5:')
             dpg.add_input_int(default_value=5, width=200, tag=f'new_pr_15{user_data[0]}', max_value=277, min_value=137, max_clamped=True, min_clamped=True)
+            dpg.add_button(label= 'Настроить', callback= send_pr, tag = f'15_{user_data[0]}', user_data= user_data)
         with dpg.group(horizontal= True):
-            dpg.add_text(default_value= 'Текущее значение давления ступени 2,0:')
+            dpg.add_text(default_value= 'Значение давления ступени 2,0:')
             dpg.add_input_int(default_value=5, width=200, tag=f'new_pr_20{user_data[0]}', max_value=395, min_value=213, max_clamped=True, min_clamped=True)
+            dpg.add_button(label= 'Настроить', callback= send_pr, tag = f'20_{user_data[0]}', user_data= user_data)
         with dpg.group(horizontal= True):
-            dpg.add_text(default_value= 'Текущее значение давления ступени 2,5:')
+            dpg.add_text(default_value= 'Значение давления ступени 2,5:')
             dpg.add_input_int(default_value=5, width=200, tag=f'new_pr_25{user_data[0]}', max_value=502, min_value=289, max_clamped=True, min_clamped=True)
+            dpg.add_button(label= 'Настроить', callback= send_pr, tag = f'25_{user_data[0]}', user_data= user_data)
         with dpg.group(horizontal= True):
-            dpg.add_text(default_value= 'Текущее значение давления ступени 3,0:')
+            dpg.add_text(default_value= 'Значение давления ступени 3,0:')
             dpg.add_input_int(default_value=5, width=200, tag=f'new_pr_30{user_data[0]}', max_value=577, min_value=395, max_clamped=True, min_clamped=True)
+            dpg.add_button(label= 'Настроить', callback= send_pr, tag = f'30_{user_data[0]}', user_data= user_data)
         with dpg.group(horizontal= True):
-            dpg.add_text(default_value= 'Текущее значение давления ступени 3,5:')
+            dpg.add_text(default_value= 'Значение давления ступени 3,5:')
             dpg.add_input_int(default_value=5, width=200, tag=f'new_pr_35{user_data[0]}', max_value=486, min_value=684, max_clamped=True, min_clamped=True)
-        
+            dpg.add_button(label= 'Настроить', callback= send_pr, tag = f'35_{user_data[0]}', user_data= user_data)
+        dpg.add_text(default_value="")
+        with dpg.group(horizontal= True):
+            dpg.add_button(label="Отмена", callback=cancel, user_data=f"set_pr_st{user_data[0]}", tag='canc')         
+            dpg.add_progress_bar(default_value=0, tag = 'p_b_pr', width=450)  
+            dpg.add_button(label="Готово", callback=cancel, user_data=f"set_pr_st{user_data[0]}", tag='set')   
+
+
+def send_temp_set(s:int, a_p:str, u_d) -> None:
+    i:int = 0
+    temp:int = dpg.get_value('new_temp')
+    temp_com:bytes = f'bmk:{u_d[0]}:setTempHeart={temp}'.encode()
+    commands_list: list[bytes] = []
+    for bmk in list_of_bmk.keys():
+        for command in list_of_control_com[:1]:
+            commands_list.append(ser.commands_generator(bmk, command).encode())
+    commands_list.insert(0, temp_com)
+    u_d[1].put(commands_list)
+    time.sleep(1)
+    commands_list.pop(0)
+    u_d[1].put(commands_list)
+    dpg.set_item_callback('canc', empty_callback)
+    dpg.set_item_callback('set', empty_callback)
+    while int(dpg.get_value(f'set_temp_c_v_{u_d[0]}').replace('+', '')) != dpg.get_value('new_temp'):
+        dpg.set_value('p_b_temp', i / 140000)
+        i += 1
+        if i > 10000000:
+            with dpg.window(label='Результат настройки', tag = 'res_s', autosize= False, pos= (dpg.get_item_pos('set_temp_w')[0] + 40, dpg.get_item_pos('set_temp_w')[0] + 40), width= 500):
+                dpg.add_text(default_value='Неудачная попытка насйтроки, попробуйте ещё!')
+                dpg.add_button(label='Ок', callback=cancel, user_data='set_temp_w')
+            return
+    with dpg.window(label='Результат настройки', tag = 'res_s', autosize= False, pos= (dpg.get_item_pos('set_temp_w')[0] + 40, dpg.get_item_pos('set_temp_w')[0] + 40), width= 300):
+        dpg.add_text(default_value='Успех!')
+        dpg.add_button(label='Ок', callback=cancel, user_data='set_temp_w')
+    dpg.set_value('p_b_temp', 1)
+    return
+
     
 def set_temp(s:int, a_d:str, user_data) -> None:
     global list_for_plot_y2, list_for_plot_x, list_for_plot_y1
