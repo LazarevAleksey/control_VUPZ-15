@@ -129,7 +129,7 @@ def draw_scheme_at_run_time() -> None:
             dpg.draw_line(parent="Main window", p1=(400, windows_bmk_pos[i][1] + 29), p2=(
                 900, windows_bmk_pos[i][1] + 29), thickness=4, color=(0, 0, 0, 255))
 
-def draw_bmk_window_at_runtime(q_task: Queue[dict[str, Any]]) -> None:
+def draw_bmk_window_at_runtime(q_task: Any) -> None:
     for bmk in list_of_bmk.keys():
         with dpg.window(tag=f"BMK:{bmk}", pos=win_pos, no_background=True, no_resize=True, no_close=True, no_title_bar=True, autosize=True, no_move=True, no_collapse=True):
             dpg.add_button(label=" ИНФ.", tag=f"bmk_{bmk}", pos=(7, 18))

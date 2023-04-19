@@ -17,7 +17,7 @@ from typing import Any
 
 cnt: int = 0
 new_temp: int = 5
-def create_dict_to_emulate_bmk(commands_list: list[bytes], q: Queue[dict[str, Any]], q_task: Queue[list[bytes]]) -> None:
+def create_dict_to_emulate_bmk(commands_list: list[bytes], q: Any, q_task: Any) -> None:
     dict_to_write: dict[str, bool | dict[str, str]] = {}
     print(commands_list)
     global cnt, new_temp
@@ -80,7 +80,7 @@ def create_dict_to_emulate_bmk(commands_list: list[bytes], q: Queue[dict[str, An
             new_temp = int(command_name.split('=')[1])
 
 
-def main_com_loop(q: Queue[dict[str, dict[str, dict[str, str]]]], q_task: Queue[list[bytes]]) -> None:
+def main_com_loop(q: Any, q_task: Any) -> None:
     ser.PORT = ser.avilable_com()
     commands_list: list[bytes] = []
     for bmk in list_of_bmk.keys():
@@ -95,14 +95,14 @@ def main_com_loop(q: Queue[dict[str, dict[str, dict[str, str]]]], q_task: Queue[
                     return
 
 
-def sending_commands_loop(commands_list: list[bytes], q: Queue[dict[str, Any]], port: serial.Serial) -> None:
+def sending_commands_loop(commands_list: list[bytes], q: Any, port: serial.Serial) -> None:
     dict_to_write: dict[str, bool | dict[str, str]] = {}
     for command in commands_list:
         bmk_num = f'{command[4:7].decode()}'
         q.put({'bmk': bmk_num, 'data': ser.send_command(command.decode(), port)})
 
 
-def bmk_emulator(q: Queue[dict[str, Any]], q_task: Queue[list[bytes]]) -> None:
+def bmk_emulator(q: Any, q_task: Any) -> None:
     commands_list: list[bytes] = []
     for bmk in list_of_bmk.keys():
         for command in list_of_control_com[:1]:
@@ -115,7 +115,7 @@ def bmk_emulator(q: Queue[dict[str, Any]], q_task: Queue[list[bytes]]) -> None:
                 return
 
 
-def show_bmk_windows(q: Queue[dict[str, Any]]) -> None:
+def show_bmk_windows(q: Any) -> None:
     global current_buks_list
     if not q.empty():
         params_dict = q.get_nowait()
@@ -261,7 +261,7 @@ def redraw_bmk_window(params_dict: dict[str, dict[str, dict[str, str]]]) -> None
     dpg.set_item_user_data(f'err_{bmk}', params_dict)
 
 
-def main_window(q: Queue[dict[str, Any]], q_task: Queue[dict[str, Any] | Any]) -> None:
+def main_window(q: Any, q_task: Any) -> None:
     dpg.create_context()
     dpg.bind_theme(create_theme_imgui_light())
     with dpg.window(tag="Main window", no_scrollbar=True, no_focus_on_appearing=False, no_resize=False, no_move=True, autosize=False):
@@ -320,8 +320,8 @@ def main_window(q: Queue[dict[str, Any]], q_task: Queue[dict[str, Any] | Any]) -
 
 
 if __name__ == '__main__':
-    q: Queue[dict[str, Any]] = Queue()
-    q_task: Queue[dict[str, Any]] = Queue()
+    q: Any = Queue()
+    q_task: Any = Queue()
     p1 = Process(target=bmk_emulator, args=(q, q_task))
     p2 = Process(target=main_window, args=(q, q_task))
     p1.start()

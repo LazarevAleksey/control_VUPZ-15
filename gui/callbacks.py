@@ -69,7 +69,7 @@ def draw_window_table(sender: int, add_data: str, user_data: dict[str, dict[str,
             inf_pos[1] = 20
     dpg.bind_item_font(f"INFO:{bmk}", 'table_font')
 
-def close_plot(sender: int, app_data: str, q_task: Queue[list[bytes]]) -> None:
+def close_plot(sender: int, app_data: str, q_task: Any) -> None:
     commands_list: list[bytes] = []
     for bmk in list_of_bmk.keys():
         for command in list_of_control_com[:1]:
@@ -77,7 +77,7 @@ def close_plot(sender: int, app_data: str, q_task: Queue[list[bytes]]) -> None:
     q_task.put(commands_list)
 
 
-def create_plot(sender: str, app_data: list[str], q_task: Queue[list[bytes]]) -> None:
+def create_plot(sender: str, app_data: list[str], q_task: Any) -> None:
     commands_list: list[bytes] = []
     for bmk in list_of_bmk.keys():
         for command in list_of_control_com[:1]:
