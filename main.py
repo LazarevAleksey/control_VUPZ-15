@@ -115,7 +115,7 @@ def bmk_emulator(q: Any, q_task: Any) -> None:
                 return
 
 
-def show_bmk_windows(q: Any) -> None:
+def show_bmk(q: Any) -> None:
     global current_buks_list
     if not q.empty():
         params_dict = q.get_nowait()
@@ -125,7 +125,7 @@ def show_bmk_windows(q: Any) -> None:
                 if not current_bmk in current_buks_list:
                     current_buks_list.append(current_bmk)
                     redraw_bmk_window(params_dict)
-                redraw_window_table(params_dict)
+                redraw_data(params_dict)
                 refresh_pr(params_dict)
                 manage_error_in_get_status(current_bmk, params_dict)
                 dpg.set_item_user_data(f"bmk_{current_bmk}", params_dict)
@@ -138,7 +138,7 @@ def show_bmk_windows(q: Any) -> None:
                 dpg.delete_item(f'line_{current_bmk}')
                 dpg.draw_line(parent=f"BMK:{current_bmk}", p1=(0, 50), p2=(
                     150, 50), thickness=4, color=(255, 0, 255, 255), tag=f'line_{current_bmk}')
-    blick_line_if_error(current_buks_list)
+    blinker(current_buks_list)
 
 
 def manage_error_in_get_status(current_bmk: str, params_dict: dict[str, dict[str, dict[str, str]]]) -> None:
@@ -165,7 +165,7 @@ def find_false(current_bmk: str, current_buks_list: list[str]) -> list[str]:
     return current_buks_list
 
 
-def blick_line_if_error(current_buks_list: list[str]) -> None:
+def blinker(current_buks_list: list[str]) -> None:
     if dpg.get_value("cnt") == 60:
         for bmk in current_buks_list:
             if dpg.get_value(f"line_err{bmk}"):
@@ -184,7 +184,7 @@ def blick_line_if_error(current_buks_list: list[str]) -> None:
         dpg.set_value('cnt', 0)
 
 
-def redraw_window_table(params: dict[str, dict[str, dict[str, str]]]) -> None:
+def redraw_data(params: dict[str, dict[str, dict[str, str]]]) -> None:
     bmk: str = str(params['bmk'])
     data_for_table = params['data']['getStatus\r\n']
     if not data_for_table:
@@ -275,7 +275,7 @@ def main_window(q: Any, q_task: Any) -> None:
                                        callback=set_pr_st, user_data=[bmk, q_task])
             with dpg.menu(label="О программе"):
                 dpg.add_text(default_value="""Разработано в ЦКЖТ в 2023 году\nРазработчик Волков Егор Алексеевич\nПо всем вопросам обращаться по адресу: gole00201@gmail.com""")
-    draw_bmk_window_at_runtime(q_task)
+    draw_bmk_at_runtime(q_task)
     draw_scheme_at_run_time()
     dpg.set_primary_window("Main window", True)
     dpg.create_viewport(title="STP ARS-4", width=1980, height=1024,
@@ -313,7 +313,7 @@ def main_window(q: Any, q_task: Any) -> None:
             while not q.empty():
                 q.get()
         print_real_time()
-        show_bmk_windows(q)
+        show_bmk(q)
         dpg.render_dearpygui_frame()
     q_task.put([b'KILL'])
     dpg.destroy_context()

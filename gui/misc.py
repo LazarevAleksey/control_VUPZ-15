@@ -5,7 +5,6 @@ stup:list[str] = ['05', '10', '15', '20', '25', '30', '35']
 list_for_plot_x: list[float] = []
 list_for_plot_y1: list[float] = []
 list_for_plot_y2: list[float] = []
-current_buks_list: list[str] = []
 win_pos: list[int] = [400, 100]
 inf_pos: list[int] = [0, 20]
 
