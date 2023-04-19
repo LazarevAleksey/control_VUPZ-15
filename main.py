@@ -1,8 +1,7 @@
 # For GUI we chose dear pygui. For each of BUKs we made a different window, and show all
 # data in tables. For each of commands we made different button that callback
 # a function to create a context menu of command.
-# TODO: Logs buttn and menu for it
-# TODO: Settings commands
+
 import dearpygui.dearpygui as dpg
 import backend.backend_parser as parser
 import backend.backend_serial as ser
@@ -10,16 +9,15 @@ from stp_conf.load_json import *
 from gui.misc import *
 from gui.callbacks import *
 from gui.draw_scheme_stp import *
-from multiprocessing import Process, Queue, Value
+from multiprocessing import Process, Value, Queue
 import time
 import serial
 import random
-
+from typing import Any
 
 cnt: int = 0
 new_temp: int = 5
-
-def create_dict_to_emulate_bmk(commands_list: list[bytes], q: Queue) -> None:
+def create_dict_to_emulate_bmk(commands_list: list[bytes], q: Queue[dict[str, Any]], q_task: Queue[list[bytes]]) -> None:
     dict_to_write: dict[str, bool | dict[str, str]] = {}
     print(commands_list)
     global cnt, new_temp
@@ -80,8 +78,9 @@ def create_dict_to_emulate_bmk(commands_list: list[bytes], q: Queue) -> None:
             dict_to_write = {}
         elif b'setTempHeart' in command:
             new_temp = int(command_name.split('=')[1])
-        
-def main_com_loop(q: Queue, q_task: Queue) -> None:
+
+
+def main_com_loop(q: Queue[dict[str, dict[str, dict[str, str]]]], q_task: Queue[list[bytes]]) -> None:
     ser.PORT = ser.avilable_com()
     commands_list: list[bytes] = []
     for bmk in list_of_bmk.keys():
@@ -96,32 +95,31 @@ def main_com_loop(q: Queue, q_task: Queue) -> None:
                     return
 
 
-def sending_commands_loop(commands_list: list[bytes], q: Queue, port: serial.Serial) -> None:
+def sending_commands_loop(commands_list: list[bytes], q: Queue[dict[str, Any]], port: serial.Serial) -> None:
     dict_to_write: dict[str, bool | dict[str, str]] = {}
     for command in commands_list:
         bmk_num = f'{command[4:7].decode()}'
-        # print({'bmk' : bmk_num, 'data' : ser.send_command(command.decode(), port)})
         q.put({'bmk': bmk_num, 'data': ser.send_command(command.decode(), port)})
 
 
-def bmk_emulator(q: Queue, q_task: Queue) -> None:
+def bmk_emulator(q: Queue[dict[str, Any]], q_task: Queue[list[bytes]]) -> None:
     commands_list: list[bytes] = []
     for bmk in list_of_bmk.keys():
         for command in list_of_control_com[:1]:
             commands_list.append(ser.commands_generator(bmk, command).encode())
     while True:
-        create_dict_to_emulate_bmk(commands_list, q)
+        create_dict_to_emulate_bmk(commands_list, q, q_task)
         if not q_task.empty():
             commands_list = q_task.get_nowait()
             if commands_list == [b'KILL']:
                 return
 
 
-def show_bmk_windows(q: Queue) -> None:
+def show_bmk_windows(q: Queue[dict[str, Any]]) -> None:
     global current_buks_list
     if not q.empty():
         params_dict = q.get_nowait()
-        current_bmk = params_dict['bmk']
+        current_bmk:str = params_dict['bmk']
         try:
             if params_dict['data']['getStatus\r\n']:
                 if not current_bmk in current_buks_list:
@@ -185,14 +183,15 @@ def blick_line_if_error(current_buks_list: list[str]) -> None:
     if dpg.get_value('cnt') > 120:
         dpg.set_value('cnt', 0)
 
+
 def redraw_window_table(params: dict[str, dict[str, dict[str, str]]]) -> None:
     bmk: str = str(params['bmk'])
     data_for_table = params['data']['getStatus\r\n']
     if not data_for_table:
         return
     if dpg.does_item_exist(f'set_temp_c_v_{bmk}'):
-        dpg.set_value(f'set_temp_c_v_{bmk}', data_for_table[list(data_for_table)[16]][0] + str(int(data_for_table[list(data_for_table)[16]][1:])))
-        print(dpg.get_value(f'set_temp_c_v_{bmk}'))
+        dpg.set_value(f'set_temp_c_v_{bmk}', data_for_table[list(data_for_table)[
+                      16]][0] + str(int(data_for_table[list(data_for_table)[16]][1:])))
     if dpg.does_item_exist(f"MT_{bmk}"):
         for i in range(len(list(data_for_table)) - 1):
             if i == 14 or i == 5:
@@ -234,7 +233,6 @@ def redraw_pr_plot(data: dict[str, str]) -> None:
             list_for_plot_x.append(i)
             dpg.set_value("series_tag1", [list_for_plot_x, list_for_plot_y1])
             dpg.set_value("series_tag2", [list_for_plot_x, list_for_plot_y2])
-            # dpg.fit_axis_data("y_axis")
             dpg.fit_axis_data("x_axis")
             if i > 40:
                 list_for_plot_y1.pop(0)
@@ -262,7 +260,8 @@ def redraw_bmk_window(params_dict: dict[str, dict[str, dict[str, str]]]) -> None
     dpg.set_item_user_data(f'bmk_{bmk}', params_dict)
     dpg.set_item_user_data(f'err_{bmk}', params_dict)
 
-def main_window(q: Queue, q_task: Queue) -> None:
+
+def main_window(q: Queue[dict[str, Any]], q_task: Queue[dict[str, Any] | Any]) -> None:
     dpg.create_context()
     dpg.bind_theme(create_theme_imgui_light())
     with dpg.window(tag="Main window", no_scrollbar=True, no_focus_on_appearing=False, no_resize=False, no_move=True, autosize=False):
@@ -270,13 +269,12 @@ def main_window(q: Queue, q_task: Queue) -> None:
             with dpg.menu(label="Настроить БМК"):
                 for bmk in list_of_bmk.keys():
                     with dpg.menu(label=f'Настроить {list_of_bmk[bmk]}'):
-                        dpg.add_button(label="Установить темепературу включения подогрева", callback=set_temp, user_data=[bmk, q_task])
-                        dpg.add_button(label="Установить давление по ступеням", callback=set_pr_st, user_data=[bmk, q_task])
+                        dpg.add_button(label="Установить темепературу включения подогрева",
+                                       callback=set_temp, user_data=[bmk, q_task])
+                        dpg.add_button(label="Установить давление по ступеням",
+                                       callback=set_pr_st, user_data=[bmk, q_task])
             with dpg.menu(label="О программе"):
-                dpg.add_text(default_value="""Разработано в ЦКЖТ в 2023 году
-Разработчик Волков Егор Алексеевич 
-По всем вопросам обращаться по адресу: gole00201@gmail.com""")
-
+                dpg.add_text(default_value="""Разработано в ЦКЖТ в 2023 году\nРазработчик Волков Егор Алексеевич\nПо всем вопросам обращаться по адресу: gole00201@gmail.com""")
     draw_bmk_window_at_runtime(q_task)
     draw_scheme_at_run_time()
     dpg.set_primary_window("Main window", True)
@@ -286,7 +284,7 @@ def main_window(q: Queue, q_task: Queue) -> None:
         for bmk in list_of_bmk.keys():
             dpg.add_bool_value(tag=f"line_err{bmk}", default_value=False)
             dpg.add_bool_value(tag=f"line_cnt{bmk}", default_value=True)
-            dpg.add_bool_value(tag=f'pr_is_ref{bmk}', default_value= False)
+            dpg.add_bool_value(tag=f'pr_is_ref{bmk}', default_value=False)
         dpg.add_int_value(tag=f"cnt", default_value=- 120)
     with dpg.theme(tag="ser1_theme"):
         with dpg.theme_component(dpg.mvLineSeries):
@@ -322,12 +320,11 @@ def main_window(q: Queue, q_task: Queue) -> None:
 
 
 if __name__ == '__main__':
-    q = Queue()
-    q_task = Queue()
+    q: Queue[dict[str, Any]] = Queue()
+    q_task: Queue[dict[str, Any]] = Queue()
     p1 = Process(target=bmk_emulator, args=(q, q_task))
     p2 = Process(target=main_window, args=(q, q_task))
     p1.start()
     p2.start()
     p1.join()
     p2.join()
-    

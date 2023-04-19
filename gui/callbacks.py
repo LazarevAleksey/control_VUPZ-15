@@ -4,7 +4,9 @@ import backend.backend_serial as ser
 from multiprocessing import Queue
 from stp_conf.load_json import *
 from .misc import *
+from .draw_scheme_stp import draw_info_table
 import time
+from typing import Any
 err_pos: list[int] = [800, 700]
 
 
@@ -13,7 +15,7 @@ def close_err() -> None:
     err_pos = [800, 700]
 
 
-def err_callback(sender: int, app_data: str, user_data: dict[str, dict[str, dict[str, str]]]) -> None:
+def err_callback(sender: int, app_data: str, user_data: dict[str, Any]) -> None:
     global err_pos
     bmk: str = user_data['bmk']
     if not user_data['data']['getStatus\r\n']:
@@ -37,7 +39,6 @@ def err_callback(sender: int, app_data: str, user_data: dict[str, dict[str, dict
         err_pos = [800, 700]
 
 
-inf_pos: list[int] = [0, 20]
 
 
 def close_inf() -> None:
@@ -68,14 +69,7 @@ def draw_window_table(sender: int, add_data: str, user_data: dict[str, dict[str,
             inf_pos[1] = 20
     dpg.bind_item_font(f"INFO:{bmk}", 'table_font')
 
-
-list_for_plot_x: list[float] = []
-list_for_plot_y1: list[float] = []
-list_for_plot_y2: list[float] = []
-current_buks_list: list[str] = []
-
-
-def close_plot(sender: int, app_data: str, q_task: Queue) -> None:
+def close_plot(sender: int, app_data: str, q_task: Queue[list[bytes]]) -> None:
     commands_list: list[bytes] = []
     for bmk in list_of_bmk.keys():
         for command in list_of_control_com[:1]:
@@ -83,7 +77,7 @@ def close_plot(sender: int, app_data: str, q_task: Queue) -> None:
     q_task.put(commands_list)
 
 
-def create_plot(sender: str, app_data: list[str], q_task: Queue) -> None:
+def create_plot(sender: str, app_data: list[str], q_task: Queue[list[bytes]]) -> None:
     commands_list: list[bytes] = []
     for bmk in list_of_bmk.keys():
         for command in list_of_control_com[:1]:
@@ -106,8 +100,6 @@ def create_plot(sender: str, app_data: list[str], q_task: Queue) -> None:
             dpg.set_axis_limits("y_axis", 0, 500)
             dpg.bind_item_theme("series_tag1", "ser1_theme")
             dpg.bind_item_theme("series_tag2", "ser2_theme")
-            # dpg.set_axis_limits("x_axis", 100, 400)
-    commands_list: list[bytes] = []
     for bmk in list_of_bmk.keys():
         for command in list_of_control_com[:1]:
             commands_list.append(ser.commands_generator(bmk, command).encode())
@@ -128,7 +120,7 @@ def cancel(s:int, a_p:str, u_d:str) -> None:
         dpg.set_value(f'pr_is_ref{bmk}', False)
 
 
-def send_pr(s:str, a_p:str, u_d) -> None:
+def send_pr(s:str, a_p:str, u_d:list[Any]) -> None:
     i:int = 0
     st = s.split('_')[0]
     new_pr = dpg.get_value(f'new_pr_{st}{u_d[0]}')
@@ -163,13 +155,11 @@ def refresh_pr(params: dict[str, dict[str, dict[str, str]]]) -> None:
     data_for_table = params['data']['getStatus\r\n']
     if dpg.does_item_exist(f'set_pr_st{bmk}') and not dpg.get_value(f'pr_is_ref{bmk}'):
         for cnt, st in enumerate(stup):
-            cnt += 7 # номера ступеней в посылке дата_фор_тэйбл
-            # if dpg.get_value(f'new_pr_{st}{bmk}') == int(data_for_table[list(data_for_table)[cnt]]):
-            #     break
+            cnt += 7 
             dpg.set_value(f'new_pr_{st}{bmk}', int(data_for_table[list(data_for_table)[cnt]]))
         dpg.set_value(f'pr_is_ref{bmk}', True)
 
-def set_pr_st(s:int, a_d:str, user_data) -> None:
+def set_pr_st(s:int, a_d:str, user_data:list[Any]) -> None:
     global list_for_plot_y2, list_for_plot_x, list_for_plot_y1
     commands_list: list[bytes] = []
     for bmk in list_of_bmk.keys():
@@ -222,7 +212,7 @@ def set_pr_st(s:int, a_d:str, user_data) -> None:
             dpg.add_button(label="Готово", callback=cancel, user_data=f"set_pr_st{user_data[0]}", tag='set')   
 
 
-def send_temp_set(s:int, a_p:str, u_d) -> None:
+def send_temp_set(s:int, a_p:str, u_d:list[Any]) -> None:
     i:int = 0
     temp:int = dpg.get_value('new_temp')
     temp_com:bytes = f'bmk:{u_d[0]}:setTempHeart={temp}'.encode()
@@ -252,7 +242,7 @@ def send_temp_set(s:int, a_p:str, u_d) -> None:
     return
 
     
-def set_temp(s:int, a_d:str, user_data) -> None:
+def set_temp(s:int, a_d:str, user_data:list[Any]) -> None:
     global list_for_plot_y2, list_for_plot_x, list_for_plot_y1
     commands_list: list[bytes] = []
     for bmk in list_of_bmk.keys():
