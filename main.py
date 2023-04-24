@@ -9,7 +9,7 @@ from stp_conf.load_json import *
 from gui.misc import *
 from gui.callbacks import *
 from gui.draw_scheme_stp import *
-from multiprocessing import Process, Value, Queue
+from multiprocessing import Process, Value, Queue, freeze_support
 import time
 import serial
 import random
@@ -320,6 +320,7 @@ def main_window(q: Any, q_task: Any) -> None:
 
 
 if __name__ == '__main__':
+    freeze_support()
     q: Any = Queue()
     q_task: Any = Queue()
     p1 = Process(target=bmk_emulator, args=(q, q_task))
