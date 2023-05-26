@@ -6,7 +6,7 @@ from . import backend_logs as logs
 from . import backend_parser as parser
 import serial
 import serial.tools.list_ports
-PORT = 'default'
+PORT = '/dev/ttyACM0'
 BAUD = 38400
 BYTE_SIZE = 8
 PARITY = 'N'
@@ -33,7 +33,9 @@ def send_command(command:str, port:serial.Serial) -> dict[str, bool | dict[str, 
     for _ in range(ATTEMPTS):
         if port.write(command.encode()):
             # s_t = time.time()
+            print(command.encode())
             line = port.readline()
+            print(line)
             # print(f"Time for read 175b :{time.time() - s_t}")
             command_name = f'{command[8:]}'
             dict_to_write[command_name] = parser.parse_com_str(line, command_name)

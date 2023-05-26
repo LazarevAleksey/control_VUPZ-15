@@ -323,7 +323,7 @@ if __name__ == '__main__':
     freeze_support()
     q: Any = Queue()
     q_task: Any = Queue()
-    p1 = Process(target=bmk_emulator, args=(q, q_task))
+    p1 = Process(target=main_com_loop, args=(q, q_task))
     p2 = Process(target=main_window, args=(q, q_task))
     p1.start()
     p2.start()
