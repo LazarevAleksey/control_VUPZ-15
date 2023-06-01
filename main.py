@@ -81,26 +81,39 @@ def create_dict_to_emulate_bmk(commands_list: list[bytes], q: Any, q_task: Any) 
 
 
 def main_com_loop(q: Any, q_task: Any) -> None:
-    ser.PORT = ser.avilable_com()
     commands_list: list[bytes] = []
     for bmk in list_of_bmk.keys():
         for command in list_of_control_com[:1]:
             commands_list.append(ser.commands_generator(bmk, command).encode())
-    with serial.Serial(ser.PORT, ser.BAUD, ser.BYTE_SIZE, ser.PARITY, ser.STOP_BITS, timeout=0.5) as port:
-        while True:
-            sending_commands_loop(commands_list, q, port)
-            if not q_task.empty():
-                commands_list = q_task.get_nowait()
-                if commands_list == [b'KILL']:
-                    return
-
+    ser.PORT = ser.avilable_com()
+    while True:
+        try:
+            with serial.Serial(ser.PORT, ser.BAUD, ser.BYTE_SIZE, ser.PARITY, ser.STOP_BITS, timeout=0.5) as port:
+                while True:
+                    try:
+                        sending_commands_loop(commands_list, q, port)
+                    except serial.SerialException:
+                        break
+                    if not q_task.empty():
+                        commands_list = q_task.get_nowait()
+                        if commands_list == [b'KILL']:
+                            return
+        except serial.SerialException:
+            ser.PORT = ser.avilable_com()
+            if ser.PORT == "0":
+                continue
+            pass
 
 def sending_commands_loop(commands_list: list[bytes], q: Any, port: serial.Serial) -> None:
     dict_to_write: dict[str, bool | dict[str, str]] = {}
     for command in commands_list:
         bmk_num = f'{command[4:7].decode()}'
-        q.put({'bmk': bmk_num, 'data': ser.send_command(command.decode(), port)})
-
+        try:
+            q.put({'bmk': bmk_num, 'data': ser.send_command(command.decode(), port)})
+        except serial.SerialException:
+            for bmk in list_of_bmk:
+                q.put({'bmk': bmk, 'data': {'getStatus\r\n': ""}})
+            raise serial.SerialException
 
 def bmk_emulator(q: Any, q_task: Any) -> None:
     commands_list: list[bytes] = []
@@ -119,10 +132,10 @@ def show_bmk(q: Any) -> None:
     global current_buks_list
     if not q.empty():
         params_dict = q.get_nowait()
-        current_bmk:str = params_dict['bmk']
+        current_bmk: str = params_dict['bmk']
         try:
             if params_dict['data']['getStatus\r\n']:
-                if not current_bmk in current_buks_list:
+                if current_bmk not in current_buks_list:
                     current_buks_list.append(current_bmk)
                     redraw_bmk_window(params_dict)
                 redraw_data(params_dict)
@@ -132,12 +145,15 @@ def show_bmk(q: Any) -> None:
             else:
                 current_buks_list = find_false(current_bmk, current_buks_list)
         except KeyError:
-            if params_dict['data']['gPr\r\n']:
-                redraw_pr_plot(params_dict['data']['gPr\r\n'])
-            else:
-                dpg.delete_item(f'line_{current_bmk}')
-                dpg.draw_line(parent=f"BMK:{current_bmk}", p1=(0, 50), p2=(
-                    150, 50), thickness=4, color=(255, 0, 255, 255), tag=f'line_{current_bmk}')
+            try:
+                if params_dict['data']['gPr\r\n']:
+                    redraw_pr_plot(params_dict['data']['gPr\r\n'])
+                else:
+                    dpg.delete_item(f'line_{current_bmk}')
+                    dpg.draw_line(parent=f"BMK:{current_bmk}", p1=(0, 50), p2=(
+                        150, 50), thickness=4, color=(255, 0, 255, 255), tag=f'line_{current_bmk}')
+            except KeyError:
+                pass
     blinker(current_buks_list)
 
 
@@ -189,6 +205,14 @@ def redraw_data(params: dict[str, dict[str, dict[str, str]]]) -> None:
     data_for_table = params['data']['getStatus\r\n']
     if not data_for_table:
         return
+    if int(data_for_table['pr0']) > 5:
+        dpg.delete_item(f'line_{bmk}')
+        dpg.draw_line(parent=f"BMK:{bmk}", p1=(0, 53), p2=(
+            200, 53), thickness=4, color=(255, 0, 0, 255), tag=f'line_{bmk}')
+    else:
+        dpg.delete_item(f'line_{bmk}')
+        dpg.draw_line(parent=f"BMK:{bmk}", p1=(0, 53), p2=(
+            200, 53), thickness=4, color=(0, 0, 0, 255), tag=f'line_{bmk}')
     if dpg.does_item_exist(f'set_temp_c_v_{bmk}'):
         dpg.set_value(f'set_temp_c_v_{bmk}', data_for_table[list(data_for_table)[
                       16]][0] + str(int(data_for_table[list(data_for_table)[16]][1:])))
