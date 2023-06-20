@@ -150,8 +150,10 @@ def show_bmk(q: Any) -> None:
                     redraw_pr_plot(params_dict['data']['gPr\r\n'])
                 else:
                     dpg.delete_item(f'line_{current_bmk}')
-                    dpg.draw_line(parent=f"BMK:{current_bmk}", p1=(0, 50), p2=(
-                        150, 50), thickness=4, color=(255, 0, 255, 255), tag=f'line_{current_bmk}')
+                    dpg.draw_line(parent=f"BMK:{current_bmk}", p1=(0, 50),
+                                  p2=(150, 50), thickness=4,
+                                  color=(255, 0, 255, 255),
+                                  tag=f'line_{current_bmk}')
             except KeyError:
                 pass
     blinker(current_buks_list)
