@@ -133,12 +133,12 @@ def show_bmk(q: Any) -> None:
     if not q.empty():
         params_dict = q.get_nowait()
         current_bmk: str = params_dict['bmk']
+        redraw_data(params_dict)
         try:
             if params_dict['data']['getStatus\r\n']:
                 if current_bmk not in current_buks_list:
                     current_buks_list.append(current_bmk)
                     redraw_bmk_window(params_dict)
-                redraw_data(params_dict)
                 refresh_pr(params_dict)
                 manage_error_in_get_status(current_bmk, params_dict)
                 dpg.set_item_user_data(f"bmk_{current_bmk}", params_dict)
@@ -204,7 +204,22 @@ def blinker(current_buks_list: list[str]) -> None:
 
 def redraw_data(params: dict[str, dict[str, dict[str, str]]]) -> None:
     bmk: str = str(params['bmk'])
-    data_for_table = params['data']['getStatus\r\n']
+    try:
+        data_for_plot = params['data']['gPr\r\n']
+        if int(data_for_plot['pr1']) > 5:
+            dpg.delete_item(f'line_{bmk}')
+            dpg.draw_line(parent=f"BMK:{bmk}", p1=(0, 53), p2=(
+                200, 53), thickness=4, color=(255, 0, 0, 255), tag=f'line_{bmk}')
+        else:
+            dpg.delete_item(f'line_{bmk}')
+            dpg.draw_line(parent=f"BMK:{bmk}", p1=(0, 53), p2=(
+                200, 53), thickness=4, color=(0, 0, 0, 255), tag=f'line_{bmk}')
+    except KeyError:
+        pass
+    try:
+        data_for_table = params['data']['getStatus\r\n']
+    except KeyError:
+        return
     if not data_for_table:
         return
     if int(data_for_table['pr0']) > 5:
@@ -254,8 +269,8 @@ def redraw_pr_plot(data: dict[str, str]) -> None:
     if dpg.does_item_exist("plot_win"):
         if dpg.is_item_visible("plot_win"):
             i += 1
-            list_for_plot_y1.append(int(data['pr0']))
-            list_for_plot_y2.append(int(data['pr1']))
+            list_for_plot_y1.append(int(data['pr1']))
+            list_for_plot_y2.append(int(data['pr2']))
             list_for_plot_x.append(i)
             dpg.set_value("series_tag1", [list_for_plot_x, list_for_plot_y1])
             dpg.set_value("series_tag2", [list_for_plot_x, list_for_plot_y2])

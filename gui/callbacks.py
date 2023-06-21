@@ -97,7 +97,7 @@ def create_plot(sender: str, app_data: list[str], q_task: Any) -> None:
                                 label=f"Давление датчика 1 {current_bmk}", parent="y_axis", tag="series_tag1")
             dpg.add_line_series(list_for_plot_x, list_for_plot_y2,
                                 label=f"Давление датчика 2 {current_bmk}", parent="y_axis", tag="series_tag2")
-            dpg.set_axis_limits("y_axis", 0, 500)
+            dpg.set_axis_limits("y_axis", 0, 700)
             dpg.bind_item_theme("series_tag1", "ser1_theme")
             dpg.bind_item_theme("series_tag2", "ser2_theme")
     for bmk in list_of_bmk.keys():

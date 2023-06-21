@@ -8,7 +8,7 @@ from . import backend_parser as parser
 import serial
 import serial.tools.list_ports
 PORT = '/dev/ttyACM1'
-BAUD = 9600
+BAUD = 57600
 BYTE_SIZE = 8
 PARITY = 'N'
 STOP_BITS = 1
@@ -37,9 +37,9 @@ def send_command(command:str, port:serial.Serial) -> dict[str, bool | dict[str, 
         try:
             if port.write(command.encode()):
                 # s_t = time.time()
-                print(command.encode())
+                # print(command.encode())
                 line = port.readline()
-                print(line)
+                # print(line)
                 # print(f"Time for read 175b :{time.time() - s_t}")
                 dict_to_write[command_name] = parser.parse_com_str(line, command_name)
                 if dict_to_write[command_name]:
