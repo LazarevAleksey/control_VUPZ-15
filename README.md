@@ -51,6 +51,11 @@ https://dearpygui.readthedocs.io)
 [Документация к pyserial](
 https://pythonhosted.org/pyserial/index.html)
 
+## Настройка и запуск
+- Установить необходимые зависимости **python3.11** -m pip install -r requriments.txt
+- Для конфигурации тормозной позиции необходимо ввести корректные адреса в файл /cfg/stp_3.json
+- python 3.11 ./main.py 
+
 
 ## Автор
 

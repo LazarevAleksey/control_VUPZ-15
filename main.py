@@ -3,81 +3,17 @@
 # a function to create a context menu of command.
 
 import dearpygui.dearpygui as dpg
-import backend.backend_parser as parser
 import backend.backend_serial as ser
 from stp_conf.load_json import *
 from gui.misc import *
 from gui.callbacks import *
 from gui.draw_scheme_stp import *
 from multiprocessing import Process, Value, Queue, freeze_support
-import time
 import serial
-import random
 from typing import Any
 
 cnt: int = 0
 new_temp: int = 5
-def create_dict_to_emulate_bmk(commands_list: list[bytes], q: Any, q_task: Any) -> None:
-    dict_to_write: dict[str, bool | dict[str, str]] = {}
-    print(commands_list)
-    global cnt, new_temp
-    for command in commands_list:
-        command_name = f'{command[8:].decode()}'
-        bmk_num = f'{command[4:7].decode()}'
-        print(command)
-        if command == 'bmk:009:getStatus\r\n'.encode():
-            cnt += 1
-            if cnt > 5 and cnt < 7:
-                dict_to_write[f'{command_name}'] = parser.parse_com_str(
-                    f"={bmk_num} bmkS=007 bmkSK=2 pr={str(random.randrange(0,400))} pr0=000 pr1=000 temp=+232 P05=064 P10=125  P15=219  P20=316  P25=401  P30=489  P35=581  Err=00000300  uPit=23  temHeart=+{new_temp} timeW=00003053 prAtmCal0=+00 prAtmCal1=+00 Styp=00 l=000 temp2=+242 timeR=000006 cs=114\r\n".encode(), command_name)
-                q.put({'bmk': f'{bmk_num}', 'data': dict_to_write})
-                dict_to_write = {}
-            else:
-                time.sleep(0.2)
-                dict_to_write[f'{command_name}'] = parser.parse_com_str(
-                    f"bmk={bmk_num} bmkS=007 bmkSK=2 pr={str(random.randrange(0,400))} pr0=000 pr1=000 temp=+232 P05=064 P10=125  P15=219  P20=316  P25=401  P30=489  P35=581  Err=00000300  uPit=23  temHeart=+{new_temp} timeW=00003053 prAtmCal0=+00 prAtmCal1=+00 Styp=00 l=000 temp2=+242 timeR=000006 cs=114\r\n".encode(), command_name)
-                q.put({'bmk': f'{bmk_num}', 'data': dict_to_write})
-                dict_to_write = {}
-            if cnt > 10:
-                cnt = 0
-            continue
-        if command == 'bmk:012:getStatus\r\n'.encode():
-            cnt += 1
-            if cnt > 5 and cnt < 7:
-                dict_to_write[f'{command_name}'] = parser.parse_com_str(
-                    f"={bmk_num} bmkS=007 bmkSK=2 pr={str(random.randrange(0,400))} pr0=000 pr1=000 temp=+232 P05=064 P10=125  P15=219  P20=316  P25=401  P30=489  P35=581  Err=00000300  uPit=23  temHeart=+{new_temp} timeW=00003053 prAtmCal0=+00 prAtmCal1=+00 Styp=00 l=000 temp2=+242 timeR=000006 cs=114\r\n".encode(), command_name)
-                q.put({'bmk': f'{bmk_num}', 'data': dict_to_write})
-                dict_to_write = {}
-            else:
-                time.sleep(0.2)
-                dict_to_write[f'{command_name}'] = parser.parse_com_str(
-                    f"bmk={bmk_num} bmkS=007 bmkSK=2 pr={str(random.randrange(0,400))} pr0=000 pr1=000 temp=+232 P05=064 P10=125  P15=219  P20=316  P25=401  P30=489  P35=581  Err=00000300  uPit=23  temHeart=+{new_temp} timeW=00003053 prAtmCal0=+00 prAtmCal1=+00 Styp=00 l=000 temp2=+242 timeR=000006 cs=114\r\n".encode(), command_name)
-                q.put({'bmk': f'{bmk_num}', 'data': dict_to_write})
-                dict_to_write = {}
-            if cnt > 10:
-                cnt = 0
-            continue
-        if command == 'bmk:010:getStatus\r\n'.encode():
-            time.sleep(0.2)
-            dict_to_write[f'{command_name}'] = parser.parse_com_str(
-                f"bmk={bmk_num} bmkS=007 bmkSK=2 pr={str(random.randrange(0,400))} pr0=000 pr1=000 temp=+232 P05=064 P10=125  P15=219  P20=316  P25=401  P30=489  P35=581  Err=00000300  uPit=23  temHeart=+{new_temp} timeW=00003053 prAtmCal0=+00 prAtmCal1=+00 Styp=00 l=000 temp2=+242 timeR=000006 cs=114\r\n".encode(), command_name)
-            q.put({'bmk': f'{bmk_num}', 'data': dict_to_write})
-            dict_to_write = {}
-            continue
-        if command_name == 'getStatus\r\n':
-            time.sleep(0.2)
-            dict_to_write[f'{command_name}'] = parser.parse_com_str(
-                f"bmk={bmk_num} bmkS=007 bmkSK=2 pr={str(random.randrange(0,400))} pr0=000 pr1=000 temp=+232 P05=064 P10=125  P15=219  P20=316  P25=401  P30=489  P35=581  Err=00000000  uPit=23  temHeart=+{new_temp} timeW=00003053 prAtmCal0=+00 prAtmCal1=+00 Styp=00 l=000 temp2=+242 timeR=000006 cs=114\r\n".encode(), command_name)
-            q.put({'bmk': f'{bmk_num}', 'data': dict_to_write})
-            dict_to_write = {}
-        elif command_name == 'gPr\r\n':
-            time.sleep(0.2)
-            dict_to_write[f'{command_name}'] = parser.parse_com_str(
-                f"bmk={bmk_num} pr0={str(random.randrange(300,400))} pr1={str(random.randrange(200,400))} pr2=000 er=00000000 bmkC=007 prC0=003 prC1=000 erC=00000000 cs=016".encode(), command_name)
-            q.put({'bmk': f'{bmk_num}', 'data': dict_to_write})
-            dict_to_write = {}
-        elif b'setTempHeart' in command:
-            new_temp = int(command_name.split('=')[1])
 
 
 def main_com_loop(q: Any, q_task: Any) -> None:
@@ -88,7 +24,12 @@ def main_com_loop(q: Any, q_task: Any) -> None:
     ser.PORT = ser.avilable_com()
     while True:
         try:
-            with serial.Serial(ser.PORT, ser.BAUD, ser.BYTE_SIZE, ser.PARITY, ser.STOP_BITS, timeout=0.5) as port:
+            with serial.Serial(ser.PORT,
+                               ser.BAUD,
+                               ser.BYTE_SIZE,
+                               ser.PARITY,
+                               ser.STOP_BITS,
+                               timeout=0.5) as port:
                 while True:
                     try:
                         sending_commands_loop(commands_list, q, port)
@@ -104,28 +45,17 @@ def main_com_loop(q: Any, q_task: Any) -> None:
                 continue
             pass
 
-def sending_commands_loop(commands_list: list[bytes], q: Any, port: serial.Serial) -> None:
-    dict_to_write: dict[str, bool | dict[str, str]] = {}
+
+def sending_commands_loop(commands_list, q, port) -> None:
     for command in commands_list:
         bmk_num = f'{command[4:7].decode()}'
         try:
-            q.put({'bmk': bmk_num, 'data': ser.send_command(command.decode(), port)})
+            q.put({'bmk': bmk_num,
+                   'data': ser.send_command(command.decode(), port)})
         except serial.SerialException:
             for bmk in list_of_bmk:
                 q.put({'bmk': bmk, 'data': {'getStatus\r\n': ""}})
             raise serial.SerialException
-
-def bmk_emulator(q: Any, q_task: Any) -> None:
-    commands_list: list[bytes] = []
-    for bmk in list_of_bmk.keys():
-        for command in list_of_control_com[:1]:
-            commands_list.append(ser.commands_generator(bmk, command).encode())
-    while True:
-        create_dict_to_emulate_bmk(commands_list, q, q_task)
-        if not q_task.empty():
-            commands_list = q_task.get_nowait()
-            if commands_list == [b'KILL']:
-                return
 
 
 def show_bmk(q: Any) -> None:
@@ -139,7 +69,6 @@ def show_bmk(q: Any) -> None:
                 if current_bmk not in current_buks_list:
                     current_buks_list.append(current_bmk)
                     redraw_bmk_window(params_dict)
-                refresh_pr(params_dict)
                 manage_error_in_get_status(current_bmk, params_dict)
                 dpg.set_item_user_data(f"bmk_{current_bmk}", params_dict)
             else:
@@ -159,7 +88,7 @@ def show_bmk(q: Any) -> None:
     blinker(current_buks_list)
 
 
-def manage_error_in_get_status(current_bmk: str, params_dict: dict[str, dict[str, dict[str, str]]]) -> None:
+def manage_error_in_get_status(current_bmk, params_dict):
     if int(params_dict['data']['getStatus\r\n']['Err']):
         if not dpg.get_value(f"line_err{current_bmk}"):
             dpg.set_value(f"line_err{current_bmk}", True)
@@ -169,10 +98,13 @@ def manage_error_in_get_status(current_bmk: str, params_dict: dict[str, dict[str
             dpg.set_value(f"line_err{current_bmk}", False)
 
 
-def find_false(current_bmk: str, current_buks_list: list[str]) -> list[str]:
+def find_false(current_bmk, current_buks_list):
     dpg.delete_item(f'line_bmk_{current_bmk}')
-    dpg.draw_line(parent=f"BMK:{current_bmk}", p1=(75, 65), p2=(
-        110, 65), thickness=10, color=(255, 0, 255, 255), tag=f'line_bmk_{current_bmk}')
+    dpg.draw_line(parent=f"BMK:{current_bmk}",
+                  p1=(75, 65), p2=(110, 65),
+                  thickness=10,
+                  color=(255, 0, 255, 255),
+                  tag=f'line_bmk_{current_bmk}')
     if dpg.get_value(f"line_err{current_bmk}"):
         dpg.set_value(f"line_err{current_bmk}", False)
     dpg.set_item_callback(f'bmk_{current_bmk}', callback=empty_callback)
@@ -188,21 +120,29 @@ def blinker(current_buks_list: list[str]) -> None:
         for bmk in current_buks_list:
             if dpg.get_value(f"line_err{bmk}"):
                 dpg.delete_item(f'line_bmk_{bmk}')
-                dpg.draw_line(parent=f"BMK:{bmk}", p1=(70, 65), p2=(
-                    115, 65), thickness=12, color=(255, 0, 0, 255), tag=f'line_bmk_{bmk}')
+                dpg.draw_line(parent=f"BMK:{bmk}",
+                              p1=(70, 65),
+                              p2=(115, 65),
+                              thickness=12,
+                              color=(255, 0, 0, 255),
+                              tag=f'line_bmk_{bmk}')
     if dpg.get_value("cnt") == 120:
         for bmk in current_buks_list:
             if dpg.get_value(f"line_err{bmk}"):
                 dpg.delete_item(f'line_bmk_{bmk}')
-                dpg.draw_line(parent=f"BMK:{bmk}", p1=(70, 65), p2=(
-                    115, 65), thickness=12, color=(0, 0, 255, 255), tag=f'line_bmk_{bmk}')
+                dpg.draw_line(parent=f"BMK:{bmk}",
+                              p1=(70, 65),
+                              p2=(115, 65),
+                              thickness=12,
+                              color=(0, 0, 255, 255),
+                              tag=f'line_bmk_{bmk}')
 
     dpg.set_value("cnt", dpg.get_value('cnt') + 1)
     if dpg.get_value('cnt') > 120:
         dpg.set_value('cnt', 0)
 
 
-def redraw_data(params: dict[str, dict[str, dict[str, str]]]) -> None:
+def redraw_data(params):
     bmk: str = str(params['bmk'])
     try:
         data_for_plot = params['data']['gPr\r\n']
@@ -264,6 +204,8 @@ def redraw_data(params: dict[str, dict[str, dict[str, str]]]) -> None:
 
 
 i: int = 0
+
+
 def redraw_pr_plot(data: dict[str, str]) -> None:
     global i, list_for_plot_y1, list_for_plot_y2, list_for_plot_x
     if dpg.does_item_exist("plot_win"):
@@ -287,7 +229,7 @@ def redraw_pr_plot(data: dict[str, str]) -> None:
             i = 0
 
 
-def redraw_bmk_window(params_dict: dict[str, dict[str, dict[str, str]]]) -> None:
+def redraw_bmk_window(params_dict):
     bmk: str = str(params_dict['bmk'])
     dpg.delete_item(f'line_{bmk}')
     dpg.draw_line(parent=f"BMK:{bmk}", p1=(0, 53), p2=(
@@ -302,20 +244,14 @@ def redraw_bmk_window(params_dict: dict[str, dict[str, dict[str, str]]]) -> None
     dpg.set_item_user_data(f'err_{bmk}', params_dict)
 
 
-def main_window(q: Any, q_task: Any) -> None:
+def main_window(q: Any, q_task: Any):
     dpg.create_context()
     dpg.bind_theme(create_theme_imgui_light())
     with dpg.window(tag="Main window", no_scrollbar=True, no_focus_on_appearing=False, no_resize=False, no_move=True, autosize=False):
         with dpg.menu_bar():
-            with dpg.menu(label="Настроить БМК"):
-                for bmk in list_of_bmk.keys():
-                    with dpg.menu(label=f'Настроить {list_of_bmk[bmk]}'):
-                        dpg.add_button(label="Установить темепературу включения подогрева",
-                                       callback=set_temp, user_data=[bmk, q_task])
-                        dpg.add_button(label="Установить давление по ступеням",
-                                       callback=set_pr_st, user_data=[bmk, q_task])
             with dpg.menu(label="О программе"):
-                dpg.add_text(default_value="""Разработано в ЦКЖТ в 2023 году\nРазработчик Волков Егор Алексеевич\nПо всем вопросам обращаться по адресу: gole00201@gmail.com""")
+                dpg.add_text(
+                    default_value="""Разработано в ЦКЖТ в 2023 году\nРазработчик Волков Егор Алексеевич\nПо всем вопросам обращаться по адресу: gole00201@gmail.com""")
     draw_bmk_at_runtime(q_task)
     draw_scheme_at_run_time()
     dpg.set_primary_window("Main window", True)
@@ -350,7 +286,7 @@ def main_window(q: Any, q_task: Any) -> None:
     dpg.setup_dearpygui()
     dpg.show_viewport()
     while dpg.is_dearpygui_running():
-        if q.qsize() > 10000:  # ЕСЛИ СЛИШКОМ ДОЛГО ОКНО БЫЛО СВЕРНУТО, ТО ВОТ ТЕБЕ ПРОПУСК В ГРАФИКЕ
+        if q.qsize() > 10000:
             while not q.empty():
                 q.get()
         print_real_time()
